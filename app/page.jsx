@@ -1,0 +1,37 @@
+import { getDashboard } from '../lib/db.js';
+import {ProgrammeForm,ExperimentForm,TariffForm} from '../components/Forms.jsx';
+import SignOut from '../components/SignOut.jsx';
+export const dynamic='force-dynamic';
+function Metric({label,value,detail}){return <article className="metric"><div className="eyebrow">{label}</div><div className="large">{value}</div><p>{detail}</p></article>}
+function Bars({rows,metric,label}){
+  const data=(rows||[]).filter(x=>x.metric===metric).slice(-14);
+  const max=Math.max(1,...data.map(x=>Number(x.kwh)));
+  return <div className="panel"><h3>{label}</h3>{!data.length?<p className="note">No readings yet.</p>:data.map(x=><div className="bar-row" key={x.day}><span>{x.day.slice(5)}</span><div className="track"><div className={'bar '+(metric==='gas.import_kwh'?'gas':'')} style={{width:(100*x.kwh/max)+'%'}}/></div><strong>{Number(x.kwh).toFixed(1)}</strong></div>)}</div>;
+}
+export default async function Page(){
+  let data=null,error='';
+  try{data=await getDashboard()}catch{error='The database is not connected, or its tables are unavailable.'}
+  const total=k=>data?.totals?.find(x=>x.metric===k)?.kwh;
+  const fmt=k=>total(k)===undefined?'—':Number(total(k)).toFixed(1);
+  return <main>
+    <header className="topbar"><a className="brand" href="#top">Energy Lab</a><nav><a href="#programmes">Programmes</a><a href="#experiments">Changes</a><a href="#tariffs">Tariffs</a></nav><SignOut/></header>
+    <section className="masthead" id="top"><div className="eyebrow">HOME ENERGY / PRIVATE ALPHA</div><h1>Understand the house.</h1><p>Measure what we use. Record changes to heating and hot-water settings. Find out what actually works.</p></section>
+    {error&&<aside className="setup"><strong>Connection needed</strong><p>{error} The app is private; configure DATABASE_URL in Vercel and run the SQL migrations.</p></aside>}
+    <section><h2>Last seven days</h2><div className="metrics">
+      <Metric label="Grid electricity" value={fmt('grid.import_kwh')+' kWh'} detail="Imported from the grid; excludes self-consumed solar"/>
+      <Metric label="Gas" value={fmt('gas.import_kwh')+' kWh'} detail="Smart-meter gas imports"/>
+      <Metric label="Solar diversion" value="Not linked" detail="Will need local power monitoring"/>
+    </div></section>
+    <section><h2>Consumption</h2><div className="columns"><Bars label="Gas · kWh/day" metric="gas.import_kwh" rows={data?.daily}/><Bars label="Grid electricity · kWh/day" metric="grid.import_kwh" rows={data?.daily}/></div>
+      <p className="note">Smart-meter readings are delayed and are not a measure of useful heat. Comparisons will eventually be adjusted for weather and comfort.</p></section>
+    <section id="programmes"><h2>Heating and hot-water programmes</h2><p>Record the settings currently programmed into your Danfoss. This records changes only; it does not operate the boiler.</p>
+      <div className="columns"><ProgrammeForm/><div><h3>Latest recorded settings</h3>{!data?.programmes?.length?<p className="muted">Nothing recorded yet.</p>:<ul className="entry-list">{data.programmes.map(p=><li key={p.id}><div className="eyebrow">{p.system==='heating'?'Central heating':'Gas hot water'} · {p.day_group.replace('_',' ')} · {p.recorded_at.slice(0,10)}</div><strong>{p.periods?.length?p.periods.map(x=>x.start+'–'+x.end).join(', '):'Scheduled off'}</strong>{p.thermostat_target_c!==null&&<div>Thermostat: {p.thermostat_target_c}°C</div>}{p.boiler_flow_c!==null&&<div>Flow setting: {p.boiler_flow_c}°C</div>}{p.note&&<p>{p.note}</p>}</li>)}</ul>}<p className="note">Programme on-time is not proof the burner was firing.</p></div></div></section>
+    <section id="experiments"><h2>Log a change</h2><p>Change one variable at a time, note comfort, then compare similar weather periods.</p>
+      <div className="columns"><ExperimentForm/><div><h3>Recent experiments</h3>{!data?.experiments?.length?<p className="muted">No changes recorded yet.</p>:<ul className="entry-list">{data.experiments.map(e=><li key={e.id}><div className="eyebrow">{e.category.replace('_',' ')} · {e.started_at.slice(0,10)}</div><strong>{e.change_description}</strong>{e.hypothesis&&<p>Expected: {e.hypothesis}</p>}{e.comfort_notes&&<p>Comfort: {e.comfort_notes}</p>}</li>)}</ul>}</div></div></section>
+    <section id="tariffs"><h2>Energy tariffs</h2><p>Record your current Fuse import rates. FIT generation and deemed export are accounted for separately.</p>
+      <div className="columns"><TariffForm/><div><h3>Current recorded rates</h3>{!data?.tariffs?.length?<p className="muted">No rates recorded yet.</p>:<ul className="entry-list">{data.tariffs.map(t=><li key={t.fuel}><strong>{t.fuel}</strong>: {t.price_p_per_kwh}p/kWh plus {t.standing_p_per_day}p/day, from {t.valid_from.slice(0,10)}</li>)}</ul>}</div></div></section>
+    <section><h2>Connected sources</h2>{!data?.latest?.length?<p className="muted">No readings imported yet. The Bright and local sensor endpoints are ready to configure.</p>:<div className="sources">{data.latest.map(x=><div className="panel" key={x.metric}><strong>{x.metric}</strong><div>{x.count} readings</div><div className="note">Latest: {new Date(x.latest).toLocaleString('en-GB',{timeZone:'Europe/London'})}</div></div>)}</div>}</section>
+    <footer>Home Energy Lab · Private household research · No automatic boiler or immersion control</footer>
+    <nav className="mobile-nav"><a href="#top">Overview</a><a href="#programmes">Programme</a><a href="#experiments">Changes</a><a href="#tariffs">Tariffs</a></nav>
+  </main>;
+}
