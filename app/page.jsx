@@ -23,6 +23,18 @@ export default async function Page(){
       <Metric label="Gas" value={fmt('gas.import_kwh')+' kWh'} detail="Smart-meter gas imports"/>
       <Metric label="Solar diversion" value="Not linked" detail="Will need local power monitoring"/>
     </div></section>
+    <section><h2>Weather near Newton Aycliffe</h2><p>Hourly estimates and forecasts from Open-Meteo. These are not readings from your home or from the solar inverter.</p>
+      <div className="metrics">
+        {[
+          ['outdoor.temperature_c','Estimated outside temperature','°C'],
+          ['solar.irradiance_wm2','Estimated sunlight on a horizontal surface','W/m²']
+        ].map(([metric,label,unit])=>{
+          const row=data?.weatherNow?.find(x=>x.metric===metric);
+          return <div className="metric" key={metric}><div className="eyebrow">{label}</div><div className="large">{row?Number(row.value).toFixed(1)+' '+unit:'—'}</div><p>{row?'For '+new Date(row.ts).toLocaleString('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit',day:'numeric',month:'short'}):'Not yet imported'}</p></div>;
+        })}
+        <div className="metric"><div className="eyebrow">Next 12 hours</div>{!data?.weatherAhead?.length?<p>No forecast imported yet</p>:<div>{data.weatherAhead.filter((_,i)=>i%3===0).map(x=><p key={x.ts} className="note">{new Date(x.ts).toLocaleTimeString('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit'})}: {Number(x.value).toFixed(1)}°C</p>)}</div>}</div>
+      </div>
+    </section>
     <section><h2>Consumption</h2><div className="columns"><Bars label="Gas · kWh/day" metric="gas.import_kwh" rows={data?.daily}/><Bars label="Grid electricity · kWh/day" metric="grid.import_kwh" rows={data?.daily}/></div>
       <p className="note">Smart-meter readings are delayed and are not a measure of useful heat. Comparisons will eventually be adjusted for weather and comfort.</p></section>
     <section id="programmes"><h2>Heating and hot-water programmes</h2><p>Record the settings currently programmed into your Danfoss. This records changes only; it does not operate the boiler.</p>
