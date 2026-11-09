@@ -1,6 +1,7 @@
 import { getDashboard } from '../lib/db.js';
 import {ProgrammeForm,ExperimentForm,TariffForm} from '../components/Forms.jsx';
 import SignOut from '../components/SignOut.jsx';
+import SyncNow from '../components/SyncNow.jsx';
 export const dynamic='force-dynamic';
 function Metric({label,value,detail}){return <article className="metric"><div className="eyebrow">{label}</div><div className="large">{value}</div><p>{detail}</p></article>}
 function Bars({rows,metric,label}){
@@ -30,7 +31,21 @@ export default async function Page(){
       <div className="columns"><ExperimentForm/><div><h3>Recent experiments</h3>{!data?.experiments?.length?<p className="muted">No changes recorded yet.</p>:<ul className="entry-list">{data.experiments.map(e=><li key={e.id}><div className="eyebrow">{e.category.replace('_',' ')} · {e.started_at.slice(0,10)}</div><strong>{e.change_description}</strong>{e.hypothesis&&<p>Expected: {e.hypothesis}</p>}{e.comfort_notes&&<p>Comfort: {e.comfort_notes}</p>}</li>)}</ul>}</div></div></section>
     <section id="tariffs"><h2>Energy tariffs</h2><p>Record your current Fuse import rates. FIT generation and deemed export are accounted for separately.</p>
       <div className="columns"><TariffForm/><div><h3>Current recorded rates</h3>{!data?.tariffs?.length?<p className="muted">No rates recorded yet.</p>:<ul className="entry-list">{data.tariffs.map(t=><li key={t.fuel}><strong>{t.fuel}</strong>: {t.price_p_per_kwh}p/kWh plus {t.standing_p_per_day}p/day, from {t.valid_from.slice(0,10)}</li>)}</ul>}</div></div></section>
-    <section><h2>Connected sources</h2>{!data?.latest?.length?<p className="muted">No readings imported yet. The Bright and local sensor endpoints are ready to configure.</p>:<div className="sources">{data.latest.map(x=><div className="panel" key={x.metric}><strong>{x.metric}</strong><div>{x.count} readings</div><div className="note">Latest: {new Date(x.latest).toLocaleString('en-GB',{timeZone:'Europe/London'})}</div></div>)}</div>}</section>
+    <section id="sources"><h2>Live data connections</h2><p>Weather data comes from a nearby forecast grid, not a sensor at your house. Smart meters supply delayed actual consumption once your Bright account has been verified.</p>
+      <div className="sources">
+        {['weather','bright'].map(source=>{
+          const run=data?.syncRuns?.find(x=>x.source===source);
+          const sourceReadings=(data?.latest||[]).filter(x=>source==='weather'?x.metric.startsWith('outdoor.')||x.metric.startsWith('solar.irradiance'):x.metric.startsWith('gas.')||x.metric.startsWith('grid.'));
+          const title=source==='weather'?'Local weather and solar irradiance':'Gas and electricity smart meters';
+          return <div className="panel" key={source}><div className="eyebrow">{source==='weather'?'OPEN-METEO':'HILDEBRAND BRIGHT'}</div><h3>{title}</h3><p className="note">Status: <strong>{run?.status||'Not yet checked'}</strong></p>
+            <p className="note">{run?.message||'Waiting for first import'}</p>
+            <p className="note">Last check: {run?.started_at?new Date(run.started_at).toLocaleString('en-GB',{timeZone:'Europe/London'}):'None yet'}</p>
+            <p className="note">Available readings: {sourceReadings.reduce((n,x)=>n+x.count,0)}</p></div>
+        })}
+      </div><SyncNow/>
+      <p className="note">Scheduled refresh: four times daily. The weather feed includes forecasts; consumption charts only use observed smart-meter readings.</p>
+    </section>
+    <section><h2>Recorded data streams</h2>{!data?.latest?.length?<p className="muted">No readings imported yet.</p>:<div className="sources">{data.latest.map(x=><div className="panel" key={x.metric}><strong>{x.metric}</strong><div>{x.count} readings</div><div className="note">Latest: {new Date(x.latest).toLocaleString('en-GB',{timeZone:'Europe/London'})}</div></div>)}</div>}</section>
     <footer>Home Energy Lab · Private household research · No automatic boiler or immersion control</footer>
     <nav className="mobile-nav"><a href="#top">Overview</a><a href="#programmes">Programme</a><a href="#experiments">Changes</a><a href="#tariffs">Tariffs</a></nav>
   </main>;
