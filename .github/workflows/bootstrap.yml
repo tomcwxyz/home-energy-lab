@@ -1,0 +1,24 @@
+name: Unpack Home Energy Lab starter
+on:
+  push:
+    branches: [main]
+    paths: ['home-energy-lab-source.tar.xz']
+permissions:
+  contents: write
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: true
+      - name: Expand reviewed starter source
+        run: |
+          set -euo pipefail
+          tar -xJf home-energy-lab-source.tar.xz --strip-components=1
+          rm home-energy-lab-source.tar.xz .github/workflows/bootstrap.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Add complete mobile Home Energy Lab application" || exit 0
+          git push origin HEAD:main
