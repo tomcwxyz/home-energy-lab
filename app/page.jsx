@@ -13,14 +13,14 @@ export default async function Page(){
   let data=null,error='';
   try{data=await getDashboard()}catch{error='The database is not connected, or its tables are unavailable.'}
   const total=k=>data?.totals?.find(x=>x.metric===k)?.kwh;
-  const fmt=k=>total(k)===undefined?'—':Number(total(k)).toFixed(1);
+  const fmt=k=>total(k)===undefined?'Awaiting data':Number(total(k)).toFixed(1)+' kWh';
   return <main>
     <header className="topbar"><a className="brand" href="#top">Energy Lab</a><nav><a href="#programmes">Programmes</a><a href="#experiments">Changes</a><a href="#tariffs">Tariffs</a></nav><SignOut/></header>
     <section className="masthead" id="top"><div className="eyebrow">HOME ENERGY / PRIVATE ALPHA</div><h1>Understand the house.</h1><p>Measure what we use. Record changes to heating and hot-water settings. Find out what actually works.</p></section>
     {error&&<aside className="setup"><strong>Connection needed</strong><p>{error} The app is private; configure DATABASE_URL in Vercel and run the SQL migrations.</p></aside>}
     <section><h2>Last seven days</h2><div className="metrics">
-      <Metric label="Grid electricity" value={fmt('grid.import_kwh')+' kWh'} detail="Imported from the grid; excludes self-consumed solar"/>
-      <Metric label="Gas" value={fmt('gas.import_kwh')+' kWh'} detail="Smart-meter gas imports"/>
+      <Metric label="Grid electricity" value={fmt('grid.import_kwh')} detail="Imported from the grid; excludes self-consumed solar"/>
+      <Metric label="Gas" value={fmt('gas.import_kwh')} detail="Smart-meter gas imports"/>
       <Metric label="Solar diversion" value="Not linked" detail="Will need local power monitoring"/>
     </div></section>
     <section><h2>Weather near Newton Aycliffe</h2><p>Hourly estimates and forecasts from Open-Meteo. These are not readings from your home or from the solar inverter.</p>
@@ -43,6 +43,17 @@ export default async function Page(){
       <div className="columns"><ExperimentForm/><div><h3>Recent experiments</h3>{!data?.experiments?.length?<p className="muted">No changes recorded yet.</p>:<ul className="entry-list">{data.experiments.map(e=><li key={e.id}><div className="eyebrow">{e.category.replace('_',' ')} · {e.started_at.slice(0,10)}</div><strong>{e.change_description}</strong>{e.hypothesis&&<p>Expected: {e.hypothesis}</p>}{e.comfort_notes&&<p>Comfort: {e.comfort_notes}</p>}</li>)}</ul>}</div></div></section>
     <section id="tariffs"><h2>Energy tariffs</h2><p>Record your current Fuse import rates. FIT generation and deemed export are accounted for separately.</p>
       <div className="columns"><TariffForm/><div><h3>Current recorded rates</h3>{!data?.tariffs?.length?<p className="muted">No rates recorded yet.</p>:<ul className="entry-list">{data.tariffs.map(t=><li key={t.fuel}><strong>{t.fuel}</strong>: {t.price_p_per_kwh}p/kWh plus {t.standing_p_per_day}p/day, from {t.valid_from.slice(0,10)}</li>)}</ul>}</div></div></section>
+    <section><h2>Meter reading quality</h2><p>Bright recognises the account, but registration and usable measurements are separate steps. A series containing nothing but zeros is not enough to establish household consumption.</p>
+      <div className="columns">{[['grid.import_kwh','Electricity'],['gas.import_kwh','Gas']].map(([metric,name])=>{
+        const q=data?.meterQuality?.find(x=>x.metric===metric);
+        return <div className="panel" key={metric}><h3>{name}</h3>
+          <p><strong>{q?.nonzero?'Real consumption detected':'Waiting for valid readings'}</strong></p>
+          <p className="note">{q?String(q.stored)+' raw records, '+String(q.nonzero)+' with non-zero consumption':'No records returned yet'}</p>
+          {q?.latest_valid&&<p className="note">Latest confirmed use: {new Date(q.latest_valid).toLocaleString('en-GB',{timeZone:'Europe/London'})}</p>}
+        </div>;
+      })}</div>
+      <p className="note">Previous zero-only batches are retained for diagnosis, but are excluded from consumption summaries until a genuine measurement is observed.</p>
+    </section>
     <section id="sources"><h2>Live data connections</h2><p>Weather data comes from a nearby forecast grid, not a sensor at your house. Smart meters supply delayed actual consumption once your Bright account has been verified.</p>
       <div className="sources">
         {['weather','bright'].map(source=>{
@@ -52,7 +63,7 @@ export default async function Page(){
           return <div className="panel" key={source}><div className="eyebrow">{source==='weather'?'OPEN-METEO':'HILDEBRAND BRIGHT'}</div><h3>{title}</h3><p className="note">Status: <strong>{run?.status||'Not yet checked'}</strong></p>
             <p className="note">{run?.message||'Waiting for first import'}</p>
             <p className="note">Last check: {run?.started_at?new Date(run.started_at).toLocaleString('en-GB',{timeZone:'Europe/London'}):'None yet'}</p>
-            <p className="note">Available readings: {sourceReadings.reduce((n,x)=>n+x.count,0)}</p></div>
+            <p className="note">{source==='bright'?'Raw records received (not necessarily valid): ':'Stored weather values: '}{sourceReadings.reduce((n,x)=>n+x.count,0)}</p></div>
         })}
       </div><SyncNow/>
       <p className="note">Scheduled refresh: four times daily. The weather feed includes forecasts; consumption charts only use observed smart-meter readings.</p>

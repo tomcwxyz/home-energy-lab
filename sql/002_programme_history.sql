@@ -1,2 +1,0 @@
-CREATE TABLE IF NOT EXISTS programme_history (id BIGSERIAL PRIMARY KEY,system TEXT NOT NULL CHECK (system IN ('heating','hot_water')),day_group TEXT NOT NULL CHECK (day_group IN ('all','weekdays','weekends')),periods JSONB NOT NULL CHECK (jsonb_typeof(periods)='array' AND jsonb_array_length(periods)<=3),thermostat_target_c NUMERIC(5,2),boiler_flow_c NUMERIC(5,2),note TEXT NOT NULL DEFAULT '',recorded_at TIMESTAMPTZ NOT NULL DEFAULT now());
-CREATE INDEX IF NOT EXISTS programme_history_latest_idx ON programme_history(system,day_group,recorded_at DESC);
