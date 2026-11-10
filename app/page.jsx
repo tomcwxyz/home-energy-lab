@@ -58,10 +58,13 @@ export default async function Page(){
       <div className="sources">
         {['weather','bright'].map(source=>{
           const run=data?.syncRuns?.find(x=>x.source===source);
+          const awaitingBright=source==='bright'&&!(data?.meterQuality||[]).some(x=>x.nonzero>0);
+          const displayStatus=awaitingBright?'waiting':(run?.status||'Not yet checked');
+          const displayMessage=awaitingBright?'Bright authenticated, but no trustworthy consumption readings yet.':'';
           const sourceReadings=(data?.latest||[]).filter(x=>source==='weather'?x.metric.startsWith('outdoor.')||x.metric.startsWith('solar.irradiance'):x.metric.startsWith('gas.')||x.metric.startsWith('grid.'));
           const title=source==='weather'?'Local weather and solar irradiance':'Gas and electricity smart meters';
-          return <div className="panel" key={source}><div className="eyebrow">{source==='weather'?'OPEN-METEO':'HILDEBRAND BRIGHT'}</div><h3>{title}</h3><p className="note">Status: <strong>{run?.status||'Not yet checked'}</strong></p>
-            <p className="note">{run?.message||'Waiting for first import'}</p>
+          return <div className="panel" key={source}><div className="eyebrow">{source==='weather'?'OPEN-METEO':'HILDEBRAND BRIGHT'}</div><h3>{title}</h3><p className="note">Status: <strong>{displayStatus}</strong></p>
+            <p className="note">{displayMessage||run?.message||'Waiting for first import'}</p>
             <p className="note">Last check: {run?.started_at?new Date(run.started_at).toLocaleString('en-GB',{timeZone:'Europe/London'}):'None yet'}</p>
             <p className="note">{source==='bright'?'Raw records received (not necessarily valid): ':'Stored weather values: '}{sourceReadings.reduce((n,x)=>n+x.count,0)}</p></div>
         })}
