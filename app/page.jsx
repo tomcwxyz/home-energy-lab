@@ -39,8 +39,29 @@ export default async function Page(){
     </section>
     <section><h2>Consumption</h2><div className="columns"><Bars label="Gas · complete days (kWh)" metric="gas.import_kwh" rows={data?.daily}/><Bars label="Grid electricity · complete days (kWh)" metric="grid.import_kwh" rows={data?.daily}/></div>
       <p className="note">Today is excluded until its 30-minute intervals are complete. Electricity days with unusual overnight zero readings are held out as provisional. These quality rules are cautious heuristics, not verification by the supplier. Gas imports are not a measure of useful heat; comparisons will later adjust for weather and comfort.</p></section>
-    <section id="programmes"><h2>Heating and hot-water programmes</h2><p>Record the settings currently programmed into your Danfoss. This records changes only; it does not operate the boiler.</p>
-      <div className="columns"><ProgrammeForm/><div><h3>Latest recorded settings</h3>{!data?.programmes?.length?<p className="muted">Nothing recorded yet.</p>:<ul className="entry-list">{data.programmes.map(p=><li key={p.id}><div className="eyebrow">{p.system==='heating'?'Central heating':'Gas hot water'} · {p.day_group.replace('_',' ')} · {p.recorded_at.slice(0,10)}</div><strong>{p.periods?.length?p.periods.map(x=>x.start+'–'+x.end).join(', '):'Scheduled off'}</strong>{p.thermostat_target_c!==null&&<div>Thermostat: {p.thermostat_target_c}°C</div>}{p.boiler_flow_c!==null&&<div>Flow setting: {p.boiler_flow_c}°C</div>}{p.note&&<p>{p.note}</p>}</li>)}</ul>}<p className="note">Programme on-time is not proof the burner was firing.</p></div></div></section>
+    <section id="programmes"><h2>Current weekly programmes</h2>
+      <p>Captured from the Danfoss programmer video on 11 November 2026. Heating and hot water are shown separately even where the times match. These are switch schedules, not evidence that the boiler fires continuously.</p>
+      <div className="weekly-grid">
+        {['heating','hot_water'].map(system=><div className="panel" key={system}>
+          <h3>{system==='heating'?'Central heating':'Gas hot water'}</h3>
+          <div className="schedule-list">
+            {['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map((day,i)=>{
+              const item=data?.dailyProgrammes?.find(x=>x.system===system&&Number(x.day_of_week)===i+1);
+              return <div className="schedule-day" key={day}>
+                <div className="schedule-day-title">{day.slice(0,3)}{item?.review_status==='partly_inferred'&&<span title="Time requires confirmation" className="needs-review">Check</span>}</div>
+                <div className="schedule-periods">{item?.periods?.length?item.periods.map((p,j)=><span key={j}>{p.start}–{p.end}</span>):<span className="muted">Not recorded</span>}</div>
+              </div>;
+            })}
+          </div>
+        </div>)}
+      </div>
+      <p className="note">Sunday contains an OFF and ON event at the same time (21:10), retained as adjacent periods. Monday hot water's final OFF is provisional. These details should be checked on the programmer.</p>
+      <div className="columns programme-editor"><div><h3>Record a setting change</h3><p className="note">Choose a system and day. The current times load automatically. Saving creates a new history record rather than overwriting the old programme.</p><ProgrammeForm current={data?.dailyProgrammes||[]}/></div>
+        <div><h3>Previously entered settings</h3><p className="note">Older grouped records are kept for historical reference, not used as the current seven-day schedule.</p>
+          {!data?.programmes?.length?<p className="muted">No earlier records.</p>:<ul className="entry-list">{data.programmes.map(p=><li key={p.id}><div className="eyebrow">{p.system==='heating'?'Central heating':'Gas hot water'} · {p.day_group.replace('_',' ')} · {p.recorded_at.slice(0,10)}</div><strong>{p.periods?.length?p.periods.map(x=>x.start+'–'+x.end).join(', '):'Scheduled off'}</strong>{p.thermostat_target_c!==null&&<div>Previously recorded thermostat: {p.thermostat_target_c}°C</div>}{p.boiler_flow_c!==null&&<div>Previously recorded flow setting: {p.boiler_flow_c}°C</div>}</li>)}</ul>}
+        </div>
+      </div>
+    </section>
     <section id="experiments"><h2>Log a change</h2><p>Change one variable at a time, note comfort, then compare similar weather periods.</p>
       <div className="columns"><ExperimentForm/><div><h3>Recent experiments</h3>{!data?.experiments?.length?<p className="muted">No changes recorded yet.</p>:<ul className="entry-list">{data.experiments.map(e=><li key={e.id}><div className="eyebrow">{e.category.replace('_',' ')} · {e.started_at.slice(0,10)}</div><strong>{e.change_description}</strong>{e.hypothesis&&<p>Expected: {e.hypothesis}</p>}{e.comfort_notes&&<p>Comfort: {e.comfort_notes}</p>}</li>)}</ul>}</div></div></section>
     <section id="tariffs"><h2>Energy tariffs</h2><p>Record your current Fuse import rates. FIT generation and deemed export are accounted for separately.</p>

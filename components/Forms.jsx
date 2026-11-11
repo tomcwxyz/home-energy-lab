@@ -17,21 +17,37 @@ function useSave(){
   }
   return {save,message,busy};
 }
-export function ProgrammeForm(){
+const weekDays=[
+  ['1','Monday'],['2','Tuesday'],['3','Wednesday'],['4','Thursday'],
+  ['5','Friday'],['6','Saturday'],['7','Sunday']
+];
+export function ProgrammeForm({current=[]}){
   const {save,message,busy}=useSave();
-  const [system,setSystem]=useState('heating'),[day,setDay]=useState('weekdays');
-  return <form className="panel form" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);
-    const periods=[1,2,3].filter(n=>f.get('enabled'+n)==='on').map(n=>({start:String(f.get('start'+n)),end:String(f.get('end'+n))}));
-    save('programme',{system,day_group:day,periods,thermostat_target_c:f.get('thermostat'),boiler_flow_c:f.get('flow'),note:f.get('note')});
-  }}>
-    <div className="split"><div className="field"><label htmlFor="sys">System</label><select id="sys" value={system} onChange={e=>setSystem(e.target.value)}><option value="heating">Central heating</option><option value="hot_water">Gas hot water</option></select></div>
-      <div className="field"><label htmlFor="days">Days</label><select id="days" value={day} onChange={e=>setDay(e.target.value)}><option value="weekdays">Weekdays</option><option value="weekends">Weekends</option><option value="all">Every day</option></select></div></div>
-    <p className="note">Tick the on/off periods actually set on the Danfoss. An unticked period is ignored.</p>
-    {[1,2,3].map(n=><div className="period" key={n}><label><input type="checkbox" name={'enabled'+n}/> Period {n}</label><input type="time" aria-label={'Start of period '+n} name={'start'+n}/><span>to</span><input type="time" aria-label={'End of period '+n} name={'end'+n}/></div>)}
-    {system==='heating'&&<div className="split"><div className="field"><label htmlFor="thermo">Room thermostat (°C)</label><input id="thermo" name="thermostat" type="number" step=".5" min="5" max="35" placeholder="Optional" /></div><div className="field"><label htmlFor="flow">Boiler flow (°C)</label><input id="flow" name="flow" type="number" min="30" max="90" placeholder="Optional" /></div></div>}
-    <div className="field"><label htmlFor="pnote">Notes</label><input id="pnote" name="note" maxLength="500" placeholder="What have you changed?"/></div>
-    <button disabled={busy}>{busy?'Saving…':'Record programme'}</button><p role="status" className="note">{message}</p>
-  </form>;
+  const [system,setSystem]=useState('heating'),[day,setDay]=useState('1');
+  const selected=current.find(x=>x.system===system && Number(x.day_of_week)===Number(day));
+  const existing=Array.isArray(selected?.periods)?selected.periods:[];
+  return <div className="panel">
+    <div className="split">
+      <div className="field"><label htmlFor="sys">System</label><select id="sys" value={system} onChange={e=>setSystem(e.target.value)}><option value="heating">Central heating</option><option value="hot_water">Gas hot water</option></select></div>
+      <div className="field"><label htmlFor="days">Day</label><select id="days" value={day} onChange={e=>setDay(e.target.value)}>{weekDays.map(([n,label])=><option key={n} value={n}>{label}</option>)}</select></div>
+    </div>
+    <p className="note">Editing the programme here records the settings you have made on the Danfoss. It does not change the boiler.</p>
+    <form className="form" key={system+'-'+day+'-'+selected?.id} onSubmit={e=>{
+      e.preventDefault();const f=new FormData(e.currentTarget);
+      const periods=[1,2,3].filter(n=>f.get('enabled'+n)==='on').map(n=>({start:String(f.get('start'+n)),end:String(f.get('end'+n))}));
+      save('daily_programme',{system,day_of_week:Number(day),periods,note:f.get('note')});
+    }}>
+      {[1,2,3].map(n=><div className="period" key={n}>
+        <label><input type="checkbox" name={'enabled'+n} defaultChecked={Boolean(existing[n-1])}/> Period {n}</label>
+        <input type="time" aria-label={'Start of period '+n} name={'start'+n} defaultValue={existing[n-1]?.start||''}/>
+        <span>to</span>
+        <input type="time" aria-label={'End of period '+n} name={'end'+n} defaultValue={existing[n-1]?.end||''}/>
+      </div>)}
+      <div className="field"><label htmlFor="pnote">Change note</label><input id="pnote" name="note" maxLength="500" placeholder="What did you change, and why?"/></div>
+      {selected?.review_status==='partly_inferred'&&<p className="uncertain">This programme contains an inferred time from the video. Check it against the programmer before using it as a confirmed baseline.</p>}
+      <button disabled={busy}>{busy?'Saving…':'Record current settings'}</button><p role="status" className="note">{message}</p>
+    </form>
+  </div>;
 }
 export function ExperimentForm(){
   const {save,message,busy}=useSave();

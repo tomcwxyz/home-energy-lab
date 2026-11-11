@@ -9,3 +9,14 @@ button{background:var(--ink);color:white;border:0;border-radius:3px;font:inherit
 .entry-list{list-style:none;padding:0;margin:0}.entry-list li{padding:0 0 17px;margin-bottom:17px;border-bottom:1px solid var(--line)}.entry-list li strong{display:block;margin:5px 0}.entry-list p{font-size:13px;color:var(--muted)}.bar-row{display:grid;grid-template-columns:42px 1fr 37px;gap:10px;font-size:12px;margin:5px 0;align-items:center}.track{height:13px;background:#eff1eb}.bar{height:100%;background:var(--green)}.bar.gas{background:var(--amber)}.sources{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.sources .panel{display:grid;gap:3px}
 .setup{padding:18px 22px;border-left:4px solid var(--amber);background:#f3efe5}.error{color:#a33}.login-wrap{max-width:520px;margin:8vh auto}.login-wrap .panel{margin-top:24px}footer{border-top:1px solid var(--line);padding-top:18px;color:var(--muted);font-size:12px}.mobile-nav{display:none}
 @media(max-width:760px){main{padding:18px 15px 72px}.topbar nav{display:none}.masthead{padding:30px 0 20px}.metrics,.columns,.sources{grid-template-columns:1fr}.metric{min-height:105px}.metric p{font-size:12px}section{margin:28px 0 33px}.period{grid-template-columns:75px minmax(0,1fr) 12px minmax(0,1fr);gap:5px}.period input[type=time]{padding:6px;font-size:13px}.period label{font-size:11px}.mobile-nav{position:fixed;bottom:0;left:0;right:0;display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border-top:1px solid var(--line);z-index:5}.mobile-nav a{text-align:center;text-decoration:none;font-size:11px;padding:12px 4px}.login-wrap{padding-top:45px}}
+
+
+.weekly-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.schedule-day{display:grid;grid-template-columns:48px 1fr;gap:8px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+.schedule-day-title{font-weight:bold;font-size:13px;display:flex;flex-direction:column;gap:3px}
+.schedule-periods{display:flex;gap:5px;flex-wrap:wrap}
+.schedule-periods span{display:inline-block;border:1px solid #d7e2d9;background:#f3f6f0;border-radius:3px;padding:4px 7px;font-size:12px;font-variant-numeric:tabular-nums}
+.needs-review,.uncertain{color:#8a522c;font-size:11px;font-weight:normal}
+.uncertain{padding:9px;border-left:3px solid var(--amber);background:#fff7ee}
+.programme-editor{margin-top:22px}
+@media(max-width:760px){.weekly-grid{grid-template-columns:1fr}.schedule-day{grid-template-columns:46px 1fr}.schedule-periods span{font-size:11px}}

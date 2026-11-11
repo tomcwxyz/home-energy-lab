@@ -25,7 +25,14 @@ export async function POST(request){
   try{d=await request.json()}catch{return NextResponse.json({error:'Invalid JSON'},{status:400})}
   try{
     const sql=db();
-    if(d.kind==='programme'){
+    if(d.kind==='daily_programme'){
+      if(!['heating','hot_water'].includes(d.system)||!Number.isInteger(d.day_of_week)||d.day_of_week<1||d.day_of_week>7)throw Error('Invalid day or system');
+      const periods=validatePeriods(d.periods);
+      const note=String(d.note||'').trim();
+      if(note.length>500)throw Error('Notes too long');
+      await sql.query("INSERT INTO programme_daily_history(system,day_of_week,periods,source,review_status,note) VALUES ($1,$2,$3::jsonb,'manual','confirmed',$4)",
+        [d.system,d.day_of_week,JSON.stringify(periods),note]);
+    }else if(d.kind==='programme'){
       if(!['heating','hot_water'].includes(d.system)||!['all','weekdays','weekends'].includes(d.day_group))throw Error('Invalid programme');
       const periods=validatePeriods(d.periods);
       const note=String(d.note||'').trim();
