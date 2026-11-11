@@ -12,15 +12,17 @@ function Bars({rows,metric,label}){
 export default async function Page(){
   let data=null,error='';
   try{data=await getDashboard()}catch{error='The database is not connected, or its tables are unavailable.'}
-  const total=k=>data?.totals?.find(x=>x.metric===k)?.kwh;
+  const resultFor=k=>data?.totals?.find(x=>x.metric===k);
+  const total=k=>resultFor(k)?.kwh;
+  const days=k=>resultFor(k)?.complete_days||0;
   const fmt=k=>total(k)===undefined?'Awaiting data':Number(total(k)).toFixed(1)+' kWh';
   return <main>
     <header className="topbar"><a className="brand" href="#top">Energy Lab</a><nav><a href="#programmes">Programmes</a><a href="#experiments">Changes</a><a href="#tariffs">Tariffs</a></nav><SignOut/></header>
     <section className="masthead" id="top"><div className="eyebrow">HOME ENERGY / PRIVATE ALPHA</div><h1>Understand the house.</h1><p>Measure what we use. Record changes to heating and hot-water settings. Find out what actually works.</p></section>
     {error&&<aside className="setup"><strong>Connection needed</strong><p>{error} The app is private; configure DATABASE_URL in Vercel and run the SQL migrations.</p></aside>}
-    <section><h2>Last seven days</h2><div className="metrics">
-      <Metric label="Grid electricity" value={fmt('grid.import_kwh')} detail="Imported from the grid; excludes self-consumed solar"/>
-      <Metric label="Gas" value={fmt('gas.import_kwh')} detail="Smart-meter gas imports"/>
+    <section><h2>Last seven complete days</h2><p>Only complete, credible meter days are included. Recent readings can arrive late or contain temporary zeros.</p><div className="metrics">
+      <Metric label="Grid electricity" value={fmt('grid.import_kwh')} detail={days('grid.import_kwh')+' of 7 complete days · excludes self-consumed solar'}/>
+      <Metric label="Gas" value={fmt('gas.import_kwh')} detail={days('gas.import_kwh')+' of 7 complete days · gas smart meter'}/>
       <Metric label="Solar diversion" value="Not linked" detail="Will need local power monitoring"/>
     </div></section>
     <section><h2>Weather near Newton Aycliffe</h2><p>Hourly estimates and forecasts from Open-Meteo. These are not readings from your home or from the solar inverter.</p>
@@ -35,8 +37,8 @@ export default async function Page(){
         <div className="metric"><div className="eyebrow">Next 12 hours</div>{!data?.weatherAhead?.length?<p>No forecast imported yet</p>:<div>{data.weatherAhead.filter((_,i)=>i%3===0).map(x=><p key={x.ts} className="note">{new Date(x.ts).toLocaleTimeString('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit'})}: {Number(x.value).toFixed(1)}°C</p>)}</div>}</div>
       </div>
     </section>
-    <section><h2>Consumption</h2><div className="columns"><Bars label="Gas · kWh/day" metric="gas.import_kwh" rows={data?.daily}/><Bars label="Grid electricity · kWh/day" metric="grid.import_kwh" rows={data?.daily}/></div>
-      <p className="note">Smart-meter readings are delayed and are not a measure of useful heat. Comparisons will eventually be adjusted for weather and comfort.</p></section>
+    <section><h2>Consumption</h2><div className="columns"><Bars label="Gas · complete days (kWh)" metric="gas.import_kwh" rows={data?.daily}/><Bars label="Grid electricity · complete days (kWh)" metric="grid.import_kwh" rows={data?.daily}/></div>
+      <p className="note">Today is excluded until its 30-minute intervals are complete. Electricity days with unusual overnight zero readings are held out as provisional. These quality rules are cautious heuristics, not verification by the supplier. Gas imports are not a measure of useful heat; comparisons will later adjust for weather and comfort.</p></section>
     <section id="programmes"><h2>Heating and hot-water programmes</h2><p>Record the settings currently programmed into your Danfoss. This records changes only; it does not operate the boiler.</p>
       <div className="columns"><ProgrammeForm/><div><h3>Latest recorded settings</h3>{!data?.programmes?.length?<p className="muted">Nothing recorded yet.</p>:<ul className="entry-list">{data.programmes.map(p=><li key={p.id}><div className="eyebrow">{p.system==='heating'?'Central heating':'Gas hot water'} · {p.day_group.replace('_',' ')} · {p.recorded_at.slice(0,10)}</div><strong>{p.periods?.length?p.periods.map(x=>x.start+'–'+x.end).join(', '):'Scheduled off'}</strong>{p.thermostat_target_c!==null&&<div>Thermostat: {p.thermostat_target_c}°C</div>}{p.boiler_flow_c!==null&&<div>Flow setting: {p.boiler_flow_c}°C</div>}{p.note&&<p>{p.note}</p>}</li>)}</ul>}<p className="note">Programme on-time is not proof the burner was firing.</p></div></div></section>
     <section id="experiments"><h2>Log a change</h2><p>Change one variable at a time, note comfort, then compare similar weather periods.</p>
